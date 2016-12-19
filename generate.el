@@ -38,10 +38,26 @@
 
 (defun mark-and-htmlize-buffer ()
   "Mark the entire current buffer and htmlize it"
-  (progn
-    (mark-whole-buffer)
-    (htmlize-region-for-paste (region-beginning) (region-end))))
+  (mark-whole-buffer)
+  (htmlize-region-for-paste (region-beginning) (region-end)))
 
+(defun htmlize-modeline ()
+  "Generate html of current modeline"
+  (let* ((modeline (format-mode-line mode-line-format t)))
+    (with-current-buffer (get-buffer-create "*modeline*")
+      (erase-buffer)
+      (insert modeline)
+      (let* ((buffer-faces (htmlize-faces-in-buffer))
+             (face-map (htmlize-make-face-map (adjoin 'default buffer-faces)))
+             (style (mapconcat #'identity (htmlize-css-specs (gethash 'default face-map)) " ")))
+        (mark-and-htmlize-buffer))
+      )))
+
+(defun htmlize-buffer-with-modeline ()
+  "Generate html for the current buffer and append the htmlized modeline"
+  (concat (mark-and-htmlize-buffer)
+          "<!--- modeline ---><br/><br/>"
+          (htmlize-modeline)))
 
 ;; HTML generation
 
@@ -55,7 +71,7 @@
   (let* ((buffer-faces (htmlize-faces-in-buffer))
          (face-map (htmlize-make-face-map (adjoin 'default buffer-faces)))
          (style (mapconcat #'identity (htmlize-css-specs (gethash 'default face-map)) " ")))
-    (s-format tpl 'elt (list theme style (mark-and-htmlize-buffer)))))
+    (s-format tpl 'elt (list theme style (htmlize-buffer-with-modeline)))))
 
 (defun generate-and-join-all-theme-divs (tpl themes)
   "Generate the divs containing the themed content that is embedded inside of the index.html layout"
